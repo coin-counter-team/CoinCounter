@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# 데이터 (원본 사진은 공유 드라이브에 보관)
+data/raw/
+data/processed/
+data/crops/
+*.jpg
+*.jpeg
+*.png
+*.heic
+!docs/**/*.png
+
+# 모델·결과물
+models/
+*.pt
+*.pth
+*.h5
+eval/results/
+
+# 편집기·OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 비공개 문서
+*.pdf
