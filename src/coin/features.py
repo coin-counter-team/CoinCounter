@@ -65,6 +65,22 @@ def hsv_features(coin_bgr: np.ndarray) -> np.ndarray:
     return np.array(mean, dtype=np.float64)
 
 
+def hue_histogram(coin_bgr: np.ndarray, min_saturation: float) -> np.ndarray:
+    """동전 픽셀 중 채도가 min_saturation 이상인 픽셀의 H 히스토그램(180칸)을 반환한다.
+
+    값은 '동전 전체 픽셀 수' 대비 비율이라, 합이 1보다 작으면 나머지는 채도가 낮은
+    (은색) 픽셀이다. 평균과 달리 H가 0과 179 양쪽에 섞여도 정보가 사라지지 않는다.
+    """
+    mask = coin_mask(coin_bgr)
+    total = cv2.countNonZero(mask)
+    if total == 0:
+        return np.zeros(180, dtype=np.float64)
+    hsv = cv2.cvtColor(coin_bgr, cv2.COLOR_BGR2HSV)
+    mask[hsv[:, :, 1] < min_saturation] = 0
+    hist = cv2.calcHist([hsv], [0], mask, [180], [0, 180]).ravel()
+    return hist.astype(np.float64) / total
+
+
 # ORB 설정.
 # nfeatures=500은 OpenCV cv2.ORB_create의 기본값과 같다
 # (https://docs.opencv.org/4.x/db/d95/classcv_1_1ORB.html).
