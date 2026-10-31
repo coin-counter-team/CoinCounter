@@ -64,9 +64,9 @@ def _to_gray(image: np.ndarray) -> np.ndarray:
     return image
 
 
-def orb_match_score(coin_gray: np.ndarray, reference_gray: np.ndarray) -> float:
-    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다.
-
+def orb_match_score(coin: np.ndarray, reference: np.ndarray) -> float:
+    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능.
+    
     1) 두 이미지에서 ORB 특징점·디스크립터를 뽑고
     2) BFMatcher(NORM_HAMMING, crossCheck=True)로 서로 가장 가까운 쌍만 매칭한 뒤
     3) 해밍 거리가 ORB_MAX_DISTANCE 이하인 '좋은 매칭' 수를
@@ -74,8 +74,8 @@ def orb_match_score(coin_gray: np.ndarray, reference_gray: np.ndarray) -> float:
     특징점이 하나도 없으면 0.0.
     """
     orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
-    _, des1 = orb.detectAndCompute(_to_gray(coin_gray), None)
-    _, des2 = orb.detectAndCompute(_to_gray(reference_gray), None)
+    _, des1 = orb.detectAndCompute(_to_gray(coin), None)
+    _, des2 = orb.detectAndCompute(_to_gray(reference), None)
     if des1 is None or des2 is None or len(des1) == 0 or len(des2) == 0:
         return 0.0
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
