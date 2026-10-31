@@ -4,7 +4,14 @@ import cv2
 import numpy as np
 import pytest
 
-from coin.classify import COIN_DIAMETER_MM, PX_PER_MM, classify_all, classify_coin, is_copper
+from coin.classify import (
+    COIN_DIAMETER_MM,
+    PX_PER_MM,
+    classify_all,
+    classify_coin,
+    copper_ratio,
+    is_copper,
+)
 from coin.features import crop_coin, hsv_features, radius_mm
 
 COPPER_BGR = (60, 110, 200)  # 주황빛 구리색
@@ -44,8 +51,8 @@ def test_radius_mm():
 
 
 def test_hsv_copper_vs_silver():
-    copper = hsv_features(crop_coin(make_image([(100, 100, 40, COPPER_BGR)]), (100, 100, 40)))
-    silver = hsv_features(crop_coin(make_image([(100, 100, 40, SILVER_BGR)]), (100, 100, 40)))
+    copper = crop_coin(make_image([(100, 100, 40, COPPER_BGR)]), (100, 100, 40))
+    silver = crop_coin(make_image([(100, 100, 40, SILVER_BGR)]), (100, 100, 40))
     assert is_copper(copper)
     assert not is_copper(silver)
 
@@ -73,3 +80,13 @@ def test_classify_all_mixed():
     img = make_image(coins)
     circles = [(x, y, r) for x, y, r, _ in coins]
     assert classify_all(img, circles) == [10, 50, 100, 500]
+
+
+def test_copper_ratio_handles_red_hue_wrap():
+    """H가 0 근처와 179 근처로 반반 섞여도(평균은 ~90) 구리로 판정돼야 한다."""
+    img = np.zeros((41, 41, 3), dtype=np.uint8)
+    img[:, :20] = (40, 60, 200)  # H ≈ 3
+    img[:, 20:] = (60, 40, 200)  # H ≈ 176
+    assert hsv_features(img)[0] > 60  # 평균만 쓰면 엉뚱한 값
+    assert copper_ratio(img) > 0.9
+    assert is_copper(img)
