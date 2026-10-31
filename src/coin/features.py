@@ -37,20 +37,32 @@ def radius_mm(circle: Circle, px_per_mm: float) -> float:
     return circle[2] / px_per_mm
 
 
-def hsv_features(coin_bgr: np.ndarray) -> np.ndarray:
-    """동전 영역의 HSV 색상 통계(평균 등)를 반환한다.
+def coin_mask(coin_bgr: np.ndarray) -> np.ndarray:
+    """crop_coin 결과에서 '동전 픽셀'만 255인 마스크를 만든다.
 
-    crop_coin 결과(정사각형, 가운데 원)를 받아 안쪽 원(HSV_MASK_RATIO) 안의
-    평균 [H, S, V]를 반환한다. OpenCV 기준 H는 0~179, S·V는 0~255.
+    crop_coin은 원 바깥을 0(검정)으로 채우므로 0이 아닌 픽셀이 곧 동전이다.
+    이미지 가장자리에서 잘려 동전이 crop 중앙에 없어도 올바른 영역을 잡는다.
+    가장자리(배경·그림자)를 빼려고 침식(erode, 5주차 모폴로지)으로 바깥 테두리를 깎는다.
     """
-    h, w = coin_bgr.shape[:2]
-    hsv = cv2.cvtColor(coin_bgr, cv2.COLOR_BGR2HSV)
-    mask = np.zeros((h, w), dtype=np.uint8)
-    r = max(int(min(h, w) / 2 * HSV_MASK_RATIO), 1)
-    cv2.circle(mask, (w // 2, h // 2), r, 255, -1)
-    mean = cv2.mean(hsv, mask=mask)[:3]
-    return np.array(mean, dtype=np.float64)
+    mask = np.any(coin_bgr != 0, axis=2).astype(np.uint8) * 255
+    r = max(coin_bgr.shape[:2]) / 2
+    k = int(r * (1 - HSV_MASK_RATIO))
+    if k > 0:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * k + 1, 2 * k + 1))
+        eroded = cv2.erode(mask, kernel)
+        if cv2.countNonZero(eroded) > 0:
+            return eroded
+    return mask
 
+
+def hsv_features(coin_bgr: np.ndarray) -> np.ndarray:
+    """동전 영역의 평균 [H, S, V]를 반환한다.
+
+    coin_mask로 고른 동전 픽셀만 평균낸다. OpenCV 기준 H는 0~179, S·V는 0~255.
+    """
+    hsv = cv2.cvtColor(coin_bgr, cv2.COLOR_BGR2HSV)
+    mean = cv2.mean(hsv, mask=coin_mask(coin_bgr))[:3]
+    return np.array(mean, dtype=np.float64)
 
 # ORB 설정.
 # nfeatures=500은 OpenCV cv2.ORB_create의 기본값과 같다
