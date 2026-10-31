@@ -19,7 +19,7 @@ def crop_coin(image: np.ndarray, circle: Circle) -> np.ndarray:
     원을 감싸는 정사각형을 잘라내고, 원 바깥(모서리) 픽셀은 0(검정)으로 채운다.
     이미지 경계를 벗어나는 부분은 잘린다.
     """
-    x, y, r = (int(v) for v in circle)
+    x, y, r = (round(v) for v in circle)
     h, w = image.shape[:2]
     x0, y0 = max(x - r, 0), max(y - r, 0)
     x1, y1 = min(x + r + 1, w), min(y + r + 1, h)
@@ -68,7 +68,7 @@ def _to_gray(image: np.ndarray) -> np.ndarray:
 
 
 def orb_match_score(coin: np.ndarray, reference: np.ndarray) -> float:
-    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능. 
+    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능.
     1) 두 이미지에서 ORB 특징점·디스크립터를 뽑고
     2) BFMatcher(NORM_HAMMING, crossCheck=True)로 서로 가장 가까운 쌍만 매칭한 뒤
     3) 해밍 거리가 ORB_MAX_DISTANCE 이하인 '좋은 매칭' 수를
