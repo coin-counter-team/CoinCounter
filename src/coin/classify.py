@@ -43,7 +43,7 @@ def classify_by_size(diameter_mm: float, candidates=(50, 100, 500)) -> int | Non
     if abs(COIN_DIAMETER_MM[best] - diameter_mm) > MAX_SIZE_DIFF_MM:
         return None
     return best
-    
+
 
 def classify_coin(image: np.ndarray, circle: Circle, px_per_mm: float = PX_PER_MM) -> int | None:
     """동전 하나의 금액을 반환한다. 판단할 수 없으면 None."""
