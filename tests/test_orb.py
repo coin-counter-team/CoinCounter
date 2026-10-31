@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from coin.features import classify_by_orb, orb_match_score
+from coin.features import classify_by_orb, orb_match_score, prepare_templates
 
 
 def _coin(text: str, size: int = 200) -> np.ndarray:
@@ -35,7 +35,13 @@ def test_blank_image_returns_zero():
 
 
 def test_classify_by_orb_picks_matching_template():
-    templates = {100: _coin("100"), 500: _coin("XO#")}
+    templates = prepare_templates({100: _coin("100"), 500: _coin("XO#")})
     value, score = classify_by_orb(_rotate(_coin("100"), 20), templates)
     assert value == 100 and score > 0
     assert classify_by_orb(_coin("100"), {}) == (None, 0.0)
+
+
+def test_prepare_templates_same_score_as_direct():
+    a, b = _rotate(_coin("100"), 20), _coin("100")
+    _, score = classify_by_orb(a, prepare_templates({100: b}))
+    assert score == orb_match_score(a, b)
