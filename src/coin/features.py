@@ -64,6 +64,7 @@ def hsv_features(coin_bgr: np.ndarray) -> np.ndarray:
     mean = cv2.mean(hsv, mask=coin_mask(coin_bgr))[:3]
     return np.array(mean, dtype=np.float64)
 
+
 # ORB 설정.
 # nfeatures=500은 OpenCV cv2.ORB_create의 기본값과 같다
 # (https://docs.opencv.org/4.x/db/d95/classcv_1_1ORB.html).
