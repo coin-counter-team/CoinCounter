@@ -13,7 +13,7 @@ ORB 매칭(#7)은 features.py에 구현돼 있지만 이 규칙에는 아직 쓰
 import numpy as np
 
 from coin.detect import Circle
-from coin.features import crop_coin, hsv_features, radius_mm
+from coin.features import crop_coin, hue_histogram, radius_mm
 
 # 한국은행 공시 동전 지름(mm). 10원은 2006년 이후 신형(구리 도금 알루미늄).
 COIN_DIAMETER_MM: dict[int, float] = {10: 18.0, 50: 21.6, 100: 24.0, 500: 26.5}
@@ -22,19 +22,26 @@ COIN_DIAMETER_MM: dict[int, float] = {10: 18.0, 50: 21.6, 100: 24.0, 500: 26.5}
 # 실제 사진에서 동전(또는 자) 하나를 재서 "반지름 px / 반지름 mm"로 다시 정할 것.
 PX_PER_MM: float = 4.0
 
-# 구리색(10원) 판정 기준. OpenCV HSV에서 H는 0~179(빨강 0, 주황 ~10~20, 노랑 ~30).
-# 구리는 주황 계열이고 채도가 높다. 은색(50/100/500원)은 채도가 낮아 S가 작다.
-COPPER_HUE_RANGE: tuple[float, float] = (0.0, 25.0)
+# 구리색(10원) 판정 기준. OpenCV HSV에서 H는 0~179(빨강 0·179, 주황 ~10~20, 노랑 ~30).
+# Hue는 원형이라 빨강 쪽(170~179)도 구리 범위로 본다. 은색 동전은 채도가 낮아 S가 작다.
+# 측정: tools/measure_coins.py 의 10원 H·S 범위를 보고 정한다.
+COPPER_HUE_RANGES: tuple[tuple[int, int], ...] = ((0, 25), (170, 179))
 COPPER_MIN_SATURATION: float = 80.0
+# 동전 픽셀 중 구리색 픽셀이 이 비율 이상이면 10원.
+COPPER_MIN_RATIO: float = 0.5
 # 가장 가까운 동전 지름과 이만큼(mm) 넘게 다르면 '모르겠음'(None).
 MAX_SIZE_DIFF_MM: float = 1.5
 
 
-def is_copper(hsv_mean: np.ndarray) -> bool:
-    """HSV 평균이 구리색(10원 신형)인지 판단한다."""
-    h, s = float(hsv_mean[0]), float(hsv_mean[1])
-    lo, hi = COPPER_HUE_RANGE
-    return lo <= h <= hi and s >= COPPER_MIN_SATURATION
+def copper_ratio(coin_bgr: np.ndarray) -> float:
+    """동전 픽셀 중 구리색(H 범위 + 채도 기준) 픽셀의 비율(0~1)."""
+    hist = hue_histogram(coin_bgr, COPPER_MIN_SATURATION)
+    return float(sum(hist[lo : hi + 1].sum() for lo, hi in COPPER_HUE_RANGES))
+
+
+def is_copper(coin_bgr: np.ndarray) -> bool:
+    """crop된 동전 이미지가 구리색(10원 신형)인지 판단한다."""
+    return copper_ratio(coin_bgr) >= COPPER_MIN_RATIO
 
 
 def classify_by_size(diameter_mm: float, candidates=(50, 100, 500)) -> int | None:
@@ -47,7 +54,7 @@ def classify_by_size(diameter_mm: float, candidates=(50, 100, 500)) -> int | Non
 
 def classify_coin(image: np.ndarray, circle: Circle, px_per_mm: float = PX_PER_MM) -> int | None:
     """동전 하나의 금액을 반환한다. 판단할 수 없으면 None."""
-    if is_copper(hsv_features(crop_coin(image, circle))):
+    if is_copper(crop_coin(image, circle)):
         return 10
     return classify_by_size(2 * radius_mm(circle, px_per_mm))
 
