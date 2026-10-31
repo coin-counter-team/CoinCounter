@@ -52,9 +52,12 @@ def hsv_features(coin_bgr: np.ndarray) -> np.ndarray:
     return np.array(mean, dtype=np.float64)
 
 
-# ORB 설정 (7주차 강의 기본값 기준).
+# ORB 설정.
+# nfeatures=500은 OpenCV cv2.ORB_create의 기본값과 같다
+# (https://docs.opencv.org/4.x/db/d95/classcv_1_1ORB.html).
 ORB_N_FEATURES = 500
 # 좋은 매칭으로 인정할 최대 해밍 거리 (0~256 비트 중).
+# 64는 근거 없는 추측값이다. 실제 사진의 거리 분포를 재서 정할 것.
 ORB_MAX_DISTANCE = 64
 
 
@@ -65,8 +68,7 @@ def _to_gray(image: np.ndarray) -> np.ndarray:
 
 
 def orb_match_score(coin: np.ndarray, reference: np.ndarray) -> float:
-    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능.
-    
+    """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능. 
     1) 두 이미지에서 ORB 특징점·디스크립터를 뽑고
     2) BFMatcher(NORM_HAMMING, crossCheck=True)로 서로 가장 가까운 쌍만 매칭한 뒤
     3) 해밍 거리가 ORB_MAX_DISTANCE 이하인 '좋은 매칭' 수를
