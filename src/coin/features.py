@@ -96,6 +96,25 @@ def _to_gray(image: np.ndarray) -> np.ndarray:
     return image
 
 
+def orb_descriptors(image: np.ndarray) -> np.ndarray | None:
+    """이미지(컬러/흑백 모두 가능)의 ORB 디스크립터를 반환한다. 특징점이 없으면 None."""
+    orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
+    _, des = orb.detectAndCompute(_to_gray(image), None)
+    if des is None or len(des) == 0:
+        return None
+    return des
+
+
+def descriptor_match_score(des1: np.ndarray | None, des2: np.ndarray | None) -> float:
+    """미리 구한 두 디스크립터의 매칭 점수(0~1). 어느 한쪽이 None이면 0.0."""
+    if des1 is None or des2 is None:
+        return 0.0
+    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = matcher.match(des1, des2)
+    good = [m for m in matches if m.distance <= ORB_MAX_DISTANCE]
+    return len(good) / min(len(des1), len(des2))
+
+
 def orb_match_score(coin: np.ndarray, reference: np.ndarray) -> float:
     """기준 이미지와의 ORB 특징점 매칭 점수를 반환한다. 컬러/흑백 모두 가능.
     1) 두 이미지에서 ORB 특징점·디스크립터를 뽑고
@@ -104,27 +123,27 @@ def orb_match_score(coin: np.ndarray, reference: np.ndarray) -> float:
        두 이미지 중 적은 특징점 수로 나눈 비율(0~1)을 점수로 쓴다.
     특징점이 하나도 없으면 0.0.
     """
-    orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
-    _, des1 = orb.detectAndCompute(_to_gray(coin), None)
-    _, des2 = orb.detectAndCompute(_to_gray(reference), None)
-    if des1 is None or des2 is None or len(des1) == 0 or len(des2) == 0:
-        return 0.0
-    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    matches = matcher.match(des1, des2)
-    good = [m for m in matches if m.distance <= ORB_MAX_DISTANCE]
-    return len(good) / min(len(des1), len(des2))
+    return descriptor_match_score(orb_descriptors(coin), orb_descriptors(reference))
 
 
-def classify_by_orb(coin: np.ndarray, templates: dict[int, np.ndarray]) -> tuple[int | None, float]:
+def prepare_templates(templates: dict[int, np.ndarray]) -> dict[int, np.ndarray | None]:
+    """{금액: 템플릿 이미지} → {금액: 디스크립터}. 프로그램 시작 시 한 번만 호출한다."""
+    return {value: orb_descriptors(img) for value, img in templates.items()}
+
+
+def classify_by_orb(
+    coin: np.ndarray, templates: dict[int, np.ndarray | None]
+) -> tuple[int | None, float]:
     """ORB 점수가 가장 높은 템플릿의 금액과 그 점수를 반환한다.
 
-    templates는 {금액: 기준 동전 crop 이미지}. 크기·색상 규칙과 비교하기 위한
-    보조 분류기이며, 템플릿이 없거나 모든 점수가 0이면 (None, 0.0).
+    templates는 prepare_templates로 미리 구한 {금액: 디스크립터}.
+    템플릿이 없거나 모든 점수가 0이면 (None, 0.0).
     """
+    coin_des = orb_descriptors(coin)
     best_value: int | None = None
     best_score = 0.0
-    for value, template in templates.items():
-        score = orb_match_score(coin, template)
+    for value, template_des in templates.items():
+        score = descriptor_match_score(coin_des, template_des)
         if score > best_score:
             best_value, best_score = value, score
     return best_value, best_score
