@@ -38,3 +38,12 @@ def total_amount(counts: dict[int, int]) -> int:
             raise ValueError(f"개수는 0 이상이어야 함: {value}원 {n}개")
         total += value * n
     return total
+
+
+def format_result(counts: dict[int, int], unknown: int = 0) -> str:
+    """'10원 2개, 500원 1개 / 총 520원' 형식의 결과 문자열. 0개인 종류는 생략."""
+    parts = [f"{v}원 {n}개" for v, n in sorted(counts.items()) if n > 0]
+    text = (", ".join(parts) or "동전 없음") + f" / 총 {total_amount(counts)}원"
+    if unknown:
+        text += f" (미분류 {unknown}개, 금액에서 제외)"
+    return text
