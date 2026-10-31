@@ -2,6 +2,7 @@ import pytest
 
 from coin.count import count_coins, format_result, split_unknown, total_amount
 
+
 def test_total_amount_mixed():
     assert total_amount({10: 3, 50: 1, 100: 2, 500: 1}) == 780
 
