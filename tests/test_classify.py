@@ -4,7 +4,15 @@ import cv2
 import numpy as np
 import pytest
 
-from coin.classify import COIN_DIAMETER_MM, PX_PER_MM, classify_all, classify_coin, is_copper
+from coin.classify import (
+    COIN_DIAMETER_MM,
+    PX_PER_MM,
+    classify_all,
+    classify_by_size,
+    classify_coin,
+    copper_ratio,
+    is_copper,
+)
 from coin.features import crop_coin, hsv_features, radius_mm
 
 COPPER_BGR = (60, 110, 200)  # 주황빛 구리색
@@ -44,8 +52,8 @@ def test_radius_mm():
 
 
 def test_hsv_copper_vs_silver():
-    copper = hsv_features(crop_coin(make_image([(100, 100, 40, COPPER_BGR)]), (100, 100, 40)))
-    silver = hsv_features(crop_coin(make_image([(100, 100, 40, SILVER_BGR)]), (100, 100, 40)))
+    copper = crop_coin(make_image([(100, 100, 40, COPPER_BGR)]), (100, 100, 40))
+    silver = crop_coin(make_image([(100, 100, 40, SILVER_BGR)]), (100, 100, 40))
     assert is_copper(copper)
     assert not is_copper(silver)
 
@@ -73,3 +81,39 @@ def test_classify_all_mixed():
     img = make_image(coins)
     circles = [(x, y, r) for x, y, r, _ in coins]
     assert classify_all(img, circles) == [10, 50, 100, 500]
+
+
+def test_copper_ratio_handles_red_hue_wrap():
+    """H가 0 근처와 179 근처로 반반 섞여도(평균은 ~90) 구리로 판정돼야 한다."""
+    img = np.zeros((41, 41, 3), dtype=np.uint8)
+    img[:, :20] = (40, 60, 200)  # H ≈ 3
+    img[:, 20:] = (60, 40, 200)  # H ≈ 176
+    assert hsv_features(img)[0] > 60  # 평균만 쓰면 엉뚱한 값
+    assert copper_ratio(img) > 0.9
+    assert is_copper(img)
+
+
+def test_crop_coin_rounds_float_circle():
+    """HoughCircles가 준 실수 좌표도 반올림해서 정상적으로 잘라야 한다 (F3)."""
+    img = make_image([(100, 100, 30, SILVER_BGR)])
+    assert crop_coin(img, (100.4, 99.6, 30.2)).shape[:2] == (61, 61)
+
+
+def test_hsv_edge_coin_same_as_center():
+    """이미지 가장자리에서 잘린 동전도 가운데 동전과 같게 구리로 판정해야 한다 (F4)."""
+    center = crop_coin(make_image([(200, 100, 36, COPPER_BGR)]), (200, 100, 36))
+    edge = crop_coin(make_image([(5, 100, 36, COPPER_BGR)]), (5, 100, 36))
+    assert is_copper(center)
+    assert is_copper(edge)
+    assert abs(copper_ratio(edge) - copper_ratio(center)) < 0.05
+
+
+def test_classify_by_size_boundary():
+    """허용 오차(1.5mm) 안이면 가장 가까운 동전으로 분류한다 (C4)."""
+    assert classify_by_size(20.2) == 50
+    assert classify_by_size(20.0) is None
+
+
+def test_classify_by_size_unknown():
+    """어느 동전과도 크기가 크게 다르면 None (C4)."""
+    assert classify_by_size(35.0) is None
