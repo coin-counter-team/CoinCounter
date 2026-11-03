@@ -13,10 +13,9 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-import cv2
-
 from coin.classify import COIN_DIAMETER_MM, copper_ratio
 from coin.features import crop_coin, hsv_features
+from coin.image_io import read_image
 
 
 def main() -> None:
@@ -28,14 +27,11 @@ def main() -> None:
 
     by_value: dict[int, list[tuple[float, float, float, float]]] = defaultdict(list)
     print("image,value,diam_px,px_per_mm,H,S,V,copper_ratio")
-    with open(args.labels, newline="", encoding="utf-8") as f:
+    with open(args.labels, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
             if row["split"] != args.split:
                 continue
-            image = cv2.imread(str(Path(args.image_dir) / row["image"]))
-            if image is None:
-                print(f"# 읽기 실패: {row['image']}")
-                continue
+            image = read_image(Path(args.image_dir) / row["image"])
             value = int(row["value"])
             circle = (float(row["x"]), float(row["y"]), float(row["r"]))
             crop = crop_coin(image, circle)

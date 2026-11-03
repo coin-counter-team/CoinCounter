@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 
 from coin.features import crop_coin, orb_descriptors
+from coin.image_io import read_image
 
 
 def main() -> None:
@@ -27,13 +28,11 @@ def main() -> None:
     args = parser.parse_args()
 
     coins: list[tuple[int, np.ndarray]] = []
-    with open(args.labels, newline="", encoding="utf-8") as f:
+    with open(args.labels, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
             if row["split"] != args.split or len(coins) >= args.max_coins:
                 continue
-            image = cv2.imread(str(Path(args.image_dir) / row["image"]))
-            if image is None:
-                continue
+            image = read_image(Path(args.image_dir) / row["image"])
             circle = (float(row["x"]), float(row["y"]), float(row["r"]))
             des = orb_descriptors(crop_coin(image, circle))
             if des is not None:

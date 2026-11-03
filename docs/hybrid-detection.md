@@ -49,14 +49,14 @@ python tools/compare_detection.py data/raw --labels data/labels/coins.csv --outp
 - `circles.csv`: 원본 해상도로 환산한 좌표·반지름.
 - `refinements.csv`: 원본 해상도 기준 보정 전후 원과 채택/유지 이유.
 - `metrics.csv`: 좌표 정답이 있을 때만 일대일 중심 매칭으로 TP·FP·FN·검출률·정밀도 기록.
-- `timings.csv`: 읽기·공통 전처리·그리기·저장 제외 검출 시간. Hybrid는 Hough+보정 합계.
+- `timings.csv`: 읽기·공통 resize/gray·그리기·저장 제외 검출 시간. Contour 전용 Blur/Otsu/닫힘 연산은 포함한다. Hybrid는 Hough+보정 합계.
 - `settings.json`: 재현용 설정.
 
 비교 도구의 Contour 전처리는 Otsu 이진화·닫힘 연산의 임시 구현이다.
 `--background light/dark`로 배경에 맞는 극성을 선택한다.
 거리는 축소 영상 픽셀, 면적은 축소 영상 픽셀 제곱 기준이다.
-split은 자동 분리하지 않으므로 평가할 split별 폴더와 CSV를 따로 준비한다.
-정답 CSV에 행이 없는 빈 이미지는 평가 대상으로 표현할 수 없다는 제한이 있다.
+혼합 split CSV는 `--split test`처럼 대상을 선택해야 한다. 동일 이미지/group의 split 중복은 오류로 처리한다. group이 없으면 묶음 누출은 검사할 수 없다.
+빈 이미지는 표준 CSV에 image/split/group을 기록하고 x,y,r을 모두 비운 행 하나로 표현한다. 개수표의 동전 수=0도 빈 위치 정답으로 평가한다. 단순히 주석에서 빠진 이미지를 빈 이미지로 추정하지 않는다.
 중심 매칭은 정답 반지름의 0.5배 이내를 기본으로 한다 (`--center-ratio`).
 정답과 예측을 최대 개수의 일대일 매칭으로 연결하고 중복 예측은 오검출로 센다.
 검출률은 TP/(TP+FN), 정밀도는 TP/(TP+FP)이며 분모가 0이면 빈칸이다.

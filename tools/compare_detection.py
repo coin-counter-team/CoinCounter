@@ -12,6 +12,7 @@ import numpy as np
 from coin.detect import detect_contour, detect_hough
 from coin.detection_metrics import detection_counts
 from coin.hybrid import refine_with_contours
+from coin.image_io import read_image
 
 
 def prepare(image: np.ndarray, max_side: int, background: str):
@@ -20,12 +21,17 @@ def prepare(image: np.ndarray, max_side: int, background: str):
     scale = min(1.0, max_side / max(h, w))
     small = cv2.resize(image, (max(1, round(w * scale)), max(1, round(h * scale))))
     gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    return small, gray, (w / small.shape[1], h / small.shape[0])
+
+
+def contour_mask(gray: np.ndarray, background: str):
+    """Contour 전용 전처리. 검출 시간에 포함한다."""
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     mode = cv2.THRESH_BINARY_INV if background == "light" else cv2.THRESH_BINARY
     _, mask = cv2.threshold(blurred, 0, 255, mode | cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    return small, gray, mask, (w / small.shape[1], h / small.shape[0])
+    return mask
 
 
 def load_counts(path: str | None) -> dict[str, int]:
@@ -38,7 +44,8 @@ def load_counts(path: str | None) -> dict[str, int]:
         return {r["파일"]: int(r["동전 수"]) for r in rows}
     counts: dict[str, int] = {}
     for row in rows:
-        counts[row["image"]] = counts.get(row["image"], 0) + 1
+        empty = all(not row.get(k, "").strip() for k in ("x", "y", "r"))
+        counts[row["image"]] = counts.get(row["image"], 0) + (0 if empty else 1)
     return counts
 
 
@@ -49,10 +56,48 @@ def load_truth(path: str | None) -> dict[str, list[tuple[float, float, float]]]:
             reader = csv.DictReader(f)
             if {"image", "x", "y", "r"}.issubset(reader.fieldnames or []):
                 for row in reader:
-                    truth.setdefault(row["image"], []).append(
-                        tuple(float(row[k]) for k in ("x", "y", "r"))
-                    )
+                    truth.setdefault(row["image"], [])
+                    if all(not row[k].strip() for k in ("x", "y", "r")):
+                        continue
+                    truth[row["image"]].append(tuple(float(row[k]) for k in ("x", "y", "r")))
+    for name, count in load_counts(path).items():
+        if count == 0:
+            truth.setdefault(name, [])
     return truth
+
+
+def select_images(paths, labels, split):
+    """전체 라벨의 split/group 누출을 검사한 뒤 이미지를 선택한다."""
+    if labels is None:
+        if split:
+            raise ValueError("--split에는 split 열이 있는 정답 CSV가 필요합니다")
+        return paths
+    with open(labels, encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    image_splits, group_splits = {}, {}
+    for row in rows:
+        name = row.get("image", row.get("파일"))
+        value = row.get("split", "").strip()
+        image_splits.setdefault(name, set()).add(value)
+        group = row.get("group", "").strip()
+        if group:
+            group_splits.setdefault(group, set()).add(value)
+    if any(len(v) > 1 for v in [*image_splits.values(), *group_splits.values()]):
+        raise ValueError("동일 이미지 또는 group이 여러 split에 포함돼 있습니다")
+    splits = {row.get("split", "").strip() for row in rows}
+    if split and (not splits or "" in splits):
+        raise ValueError("모든 정답 행에 split이 필요합니다")
+    if not split and len(splits) > 1:
+        raise ValueError("여러 split이 있습니다. --split으로 평가 대상을 선택하세요")
+    if split:
+        selected = {name for name, values in image_splits.items() if split in values}
+        missing = selected - {p.name for p in paths}
+        if missing:
+            raise ValueError(f"선택한 split의 이미지가 없습니다: {sorted(missing)}")
+        paths = [p for p in paths if p.name in selected]
+        if not paths:
+            raise ValueError("선택한 split의 입력 사진이 없습니다")
+    return paths
 
 
 def main() -> None:
@@ -60,6 +105,7 @@ def main() -> None:
     parser.add_argument("image_dir", type=Path)
     parser.add_argument("--pattern", default="*.jpg")
     parser.add_argument("--labels", help="hw_labels.csv 또는 표준 coins.csv")
+    parser.add_argument("--split", help="정답 CSV의 split 선택; 혼합 split은 선택 필수")
     parser.add_argument("--output", type=Path, default=Path("eval/results/detection"))
     parser.add_argument("--max-side", type=int, default=1200)
     parser.add_argument("--background", choices=("light", "dark"), default="light")
@@ -78,6 +124,7 @@ def main() -> None:
     paths = sorted(args.image_dir.glob(args.pattern))
     if not paths:
         parser.error("입력 사진이 없습니다")
+    paths = select_images(paths, args.labels, args.split)
     counts = load_counts(args.labels)
     truth = load_truth(args.labels)
     args.output.mkdir(parents=True, exist_ok=True)
@@ -87,12 +134,10 @@ def main() -> None:
     )
     summary, detections, metrics, refinements, timings = [], [], [], [], []
     for path in paths:
-        # Windows 한글 경로도 읽을 수 있도록 imdecode를 사용한다.
-        image = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if image is None:
-            raise ValueError(f"이미지를 읽을 수 없습니다: {path}")
-        small, gray, mask, (sx, sy) = prepare(image, args.max_side, args.background)
+        image = read_image(path)
+        small, gray, (sx, sy) = prepare(image, args.max_side, args.background)
         started = perf_counter()
+        mask = contour_mask(gray, args.background)
         contour_circles = detect_contour(mask, args.min_area, args.min_circularity)
         contour_ms = (perf_counter() - started) * 1000
         started = perf_counter()
