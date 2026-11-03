@@ -15,8 +15,7 @@ from coin.detect import detect_hough
 
 circles = detect_hough(gray)
 # 긴 변 1200픽셀로 축소한 로컬 촬영 사진의 탐색 설정 예시:
-circles = detect_hough(gray, min_dist=90, min_radius=45,
-                       max_radius=110, param1=150, param2=50)
+circles = detect_hough(gray, min_dist=90, min_radius=45, max_radius=110, param1=150, param2=50)
 ```
 
 위 설정은 다른 촬영 거리·해상도에 그대로 적용할 수 없다.
