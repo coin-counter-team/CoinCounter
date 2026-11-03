@@ -25,9 +25,45 @@ def detect_contour(
     return filter_candidates(contours, min_area, min_circularity)
 
 
-def detect_hough(gray: np.ndarray) -> list[Circle]:
-    """Grayscale 이미지에서 Hough Circle로 동전을 찾는다."""
-    raise NotImplementedError
+def detect_hough(
+    gray: np.ndarray,
+    *,
+    dp: float = 1.2,
+    min_dist: float = 40.0,
+    param1: float = 100.0,
+    param2: float = 30.0,
+    min_radius: int = 10,
+    max_radius: int = 0,
+    blur_size: int = 5,
+) -> list[Circle]:
+    """8비트 회색조 이미지에서 원을 찾는다. 좌표·반지름 단위는 입력 픽셀.
+
+    기본값은 시작점이며 촬영 해상도에 맞춰 조정한다. max_radius=0은 상한 자동.
+    min_dist로 같은 동전의 중복 검출을 억제한다.
+    """
+    if gray.ndim != 2 or gray.dtype != np.uint8 or gray.size == 0:
+        raise ValueError("비어 있지 않은 uint8 회색조 이미지가 필요합니다")
+    if not all(np.isfinite(v) and v > 0 for v in (dp, min_dist, param1, param2)):
+        raise ValueError("dp, min_dist, param1, param2는 양수여야 합니다")
+    if min_radius < 0 or max_radius < 0 or (max_radius and max_radius <= min_radius):
+        raise ValueError("반지름은 0 이상이며 상한은 하한보다 커야 합니다")
+    if blur_size < 1 or blur_size % 2 == 0:
+        raise ValueError("blur_size는 양의 홀수여야 합니다")
+
+    blurred = cv2.GaussianBlur(gray, (blur_size, blur_size), 0)
+    circles = cv2.HoughCircles(
+        blurred,
+        cv2.HOUGH_GRADIENT,
+        dp=dp,
+        minDist=min_dist,
+        param1=param1,
+        param2=param2,
+        minRadius=min_radius,
+        maxRadius=max_radius,
+    )
+    if circles is None:
+        return []
+    return [tuple(int(v) for v in np.rint(circle)) for circle in circles[0]]
 
 
 def filter_candidates(
