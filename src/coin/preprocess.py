@@ -198,7 +198,8 @@ def preprocess_split(split: str = "tune", method: str = "adaptive") -> int:
     source = DATA_DIR / "raw" / split
     output = DATA_DIR / "processed" / split
     images = sorted(
-        path for path in source.rglob("*")
+        path
+        for path in source.rglob("*")
         if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png"}
     )
     if not images:
