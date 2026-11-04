@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+DATA_SPLITS = ("tune", "test")
 
 
 def to_gray(image: np.ndarray) -> np.ndarray:
@@ -190,16 +191,18 @@ def _repair_coin_masks(gray: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return result
 
 
-def preprocess_tune(method: str = "adaptive") -> int:
-    """조정용 사진을 처리하고 저장한 PNG 마스크 수를 반환한다."""
-    source = DATA_DIR / "raw" / "tune"
-    output = DATA_DIR / "processed" / "tune"
+def preprocess_split(split: str = "tune", method: str = "adaptive") -> int:
+    """`raw/<split>`의 사진을 처리해 `processed/<split>`에 저장하고 장수를 반환한다."""
+    if split not in DATA_SPLITS:
+        raise ValueError(f"지원하지 않는 데이터 분할: {split}")
+    source = DATA_DIR / "raw" / split
+    output = DATA_DIR / "processed" / split
     images = sorted(
         path for path in source.rglob("*")
         if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png"}
     )
     if not images:
-        raise FileNotFoundError(f"조정용 사진을 찾을 수 없습니다: {source}")
+        raise FileNotFoundError(f"사진을 찾을 수 없습니다: {source}")
 
     for path in images:
         raw = np.fromfile(path, dtype=np.uint8)
@@ -207,6 +210,7 @@ def preprocess_tune(method: str = "adaptive") -> int:
         if image is None:
             raise OSError(f"사진을 읽을 수 없습니다: {path}")
         mask = preprocess_image(image, method)
+        # 하위 폴더와 원본 확장자를 남겨 이름이 같은 사진도 구분한다.
         target = output / path.relative_to(source).with_suffix(path.suffix + ".png")
         ok, encoded = cv2.imencode(".png", mask)
         if not ok:
@@ -215,6 +219,7 @@ def preprocess_tune(method: str = "adaptive") -> int:
         temporary = NamedTemporaryFile(dir=target.parent, delete=False)
         temporary_path = Path(temporary.name)
         try:
+            # PNG를 끝까지 쓴 뒤 교체해 쓰기 도중 실패해도 기존 결과를 보존한다.
             with temporary:
                 temporary.write(encoded.tobytes())
             temporary_path.replace(target)
@@ -224,16 +229,18 @@ def preprocess_tune(method: str = "adaptive") -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="조정용 사진의 동전 마스크를 생성합니다.")
+    parser = argparse.ArgumentParser(description="선택한 데이터 분할의 동전 마스크를 생성합니다.")
+    # 테스트용 사진은 --split test를 지정할 때만 처리한다.
+    parser.add_argument("--split", choices=DATA_SPLITS, default="tune")
     parser.add_argument("--method", choices=("adaptive", "otsu"), default="adaptive")
     args = parser.parse_args()
     try:
-        count = preprocess_tune(args.method)
+        count = preprocess_split(args.split, args.method)
     except OSError as error:
         parser.exit(1, f"{error}\n")
-    print(f"조정용 마스크 {count}장 저장: {DATA_DIR / 'processed' / 'tune'}")
+    print(f"{args.split} 마스크 {count}장 저장: {DATA_DIR / 'processed' / args.split}")
 
 
-# 모듈을 직접 실행할 때만 조정용 사진을 일괄 처리한다.
+# 모듈을 직접 실행할 때만 선택한 분할의 사진을 일괄 처리한다.
 if __name__ == "__main__":
     main()
