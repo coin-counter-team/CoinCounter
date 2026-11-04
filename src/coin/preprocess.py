@@ -6,6 +6,7 @@ Grayscale, Gaussian Blur, 이진화, 형태학적 연산과
 
 import argparse
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import cv2
 import numpy as np
@@ -64,7 +65,21 @@ def preprocess_image(image: np.ndarray, method: str = "adaptive") -> np.ndarray:
     """BGR 사진을 원본 크기의 검출용 이진 마스크로 변환한다."""
     gray = to_gray(image)
     mask = binarize(gray, method)
-    return _repair_coin_masks(gray, mask) if method == "adaptive" else mask
+    if method == "adaptive":
+        mask = _repair_coin_masks(gray, mask)
+        mask = _clean_coin_mask(mask)
+    return mask
+
+
+def _clean_coin_mask(mask: np.ndarray) -> np.ndarray:
+    """복원 후 남은 작은 잡점을 제거하고 동전 내부의 빈 픽셀을 채운다."""
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    min_area = max(1, mask.size * 0.00015)
+    cleaned = np.zeros_like(mask)
+    for contour in contours:
+        if cv2.contourArea(contour) >= min_area:
+            cv2.drawContours(cleaned, [contour], -1, 255, cv2.FILLED)
+    return cleaned
 
 
 def _coin_rims(gray: np.ndarray) -> list[tuple[float, float, float]]:
@@ -197,7 +212,14 @@ def preprocess_tune(method: str = "adaptive") -> int:
         if not ok:
             raise OSError(f"마스크를 인코딩할 수 없습니다: {target}")
         target.parent.mkdir(parents=True, exist_ok=True)
-        encoded.tofile(target)
+        temporary = NamedTemporaryFile(dir=target.parent, delete=False)
+        temporary_path = Path(temporary.name)
+        try:
+            with temporary:
+                temporary.write(encoded.tobytes())
+            temporary_path.replace(target)
+        finally:
+            temporary_path.unlink(missing_ok=True)
     return len(images)
 
 
