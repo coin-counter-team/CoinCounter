@@ -76,9 +76,7 @@ def load_preds(path: Path) -> dict[str, list[Pred]]:
     return preds
 
 
-def match(
-    gts: list[Gt], preds: list[Pred], tol: float = MATCH_TOLERANCE
-) -> list[tuple[Gt, Pred]]:
+def match(gts: list[Gt], preds: list[Pred], tol: float = MATCH_TOLERANCE) -> list[tuple[Gt, Pred]]:
     """중심 거리가 가까운 순서로 정답-예측을 일대일 매칭한다 (그리디)."""
     pairs = []
     for gi, g in enumerate(gts):
