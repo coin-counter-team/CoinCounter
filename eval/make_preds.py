@@ -127,7 +127,9 @@ def main() -> None:
         try:
             preds = predict(read_image(path), args.detector, args.preprocess, classifier)
         except NotImplementedError:
-            raise SystemExit("분류가 아직 구현되지 않았습니다. --classifier none 으로 실행하세요.")
+            raise SystemExit(
+                "분류가 아직 구현되지 않았습니다. --classifier none 으로 실행하세요."
+            ) from None
         rows.extend((name, x, y, r, "" if v is None else v) for x, y, r, v in preds)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
