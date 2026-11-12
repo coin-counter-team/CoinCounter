@@ -49,7 +49,7 @@ def load_labels(path: Path):
     """정답 CSV를 읽어 이미지별 (메타 정보, 동전 목록)으로 반환한다."""
     meta: dict[str, tuple[str, str]] = {}
     coins: dict[str, list[Gt]] = defaultdict(list)
-    with path.open(encoding="utf-8", newline="") as f:
+    with path.open(encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
             image = row["image"]
             meta[image] = (row["split"], row["condition"])
@@ -62,7 +62,7 @@ def load_labels(path: Path):
 def load_preds(path: Path) -> dict[str, list[Pred]]:
     """예측 CSV를 읽어 이미지별 동전 목록으로 반환한다."""
     preds: dict[str, list[Pred]] = defaultdict(list)
-    with path.open(encoding="utf-8", newline="") as f:
+    with path.open(encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
             raw = (row.get("value") or "").strip()
             preds[row["image"]].append(

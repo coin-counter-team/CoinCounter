@@ -3,6 +3,9 @@
 정답 CSV에 있는 이미지를 전처리 → 검출 → (분류) 순서로 처리해
 evaluate.py가 읽는 예측 CSV(image,x,y,r,value)를 만든다.
 
+--labels에는 image, split 열이 있는 CSV면 무엇이든 넘길 수 있다
+(예: 사진 단위 정답만 있을 때는 image_manifest.csv).
+
 분류가 아직 구현되지 않았다면 --classifier none 으로 검출률만 먼저 평가할 수 있다.
 이때 value 열은 비워 두며, 분류 정확도와 총금액 일치율은 의미가 없다.
 
@@ -57,7 +60,7 @@ def target_images(labels: Path, splits: set[str]) -> list[str]:
     """정답 CSV에서 대상 split의 이미지 이름을 순서대로 중복 없이 뽑는다."""
     names: list[str] = []
     seen: set[str] = set()
-    with labels.open(encoding="utf-8", newline="") as f:
+    with labels.open(encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
             if row["split"] in splits and row["image"] not in seen:
                 seen.add(row["image"])
