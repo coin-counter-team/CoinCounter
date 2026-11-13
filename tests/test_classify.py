@@ -6,11 +6,11 @@ import pytest
 
 from coin.classify import (
     COIN_DIAMETER_MM,
-    PX_PER_MM,
     classify_all,
     classify_by_size,
     classify_coin,
     copper_ratio,
+    estimate_px_per_mm,
     is_copper,
 )
 from coin.features import crop_coin, hsv_features, radius_mm
@@ -18,6 +18,8 @@ from coin.features import crop_coin, hsv_features, radius_mm
 COPPER_BGR = (60, 110, 200)  # 주황빛 구리색
 SILVER_BGR = (190, 190, 195)  # 채도가 낮은 은색
 BACKGROUND_BGR = (40, 40, 40)
+# 합성 이미지는 작게 그리므로 실제 사진 값(PX_PER_MM)과 따로 둔다.
+PX_PER_MM = 4.0
 
 
 def make_image(coins):
@@ -62,13 +64,13 @@ def test_hsv_copper_vs_silver():
 def test_classify_silver_by_size(value):
     r = r_px(value)
     img = make_image([(200, 200, r, SILVER_BGR)])
-    assert classify_coin(img, (200, 200, r)) == value
+    assert classify_coin(img, (200, 200, r), PX_PER_MM) == value
 
 
 def test_classify_copper_is_10():
     r = r_px(10)
     img = make_image([(200, 200, r, COPPER_BGR)])
-    assert classify_coin(img, (200, 200, r)) == 10
+    assert classify_coin(img, (200, 200, r), PX_PER_MM) == 10
 
 
 def test_classify_all_mixed():
@@ -117,3 +119,26 @@ def test_classify_by_size_boundary():
 def test_classify_by_size_unknown():
     """어느 동전과도 크기가 크게 다르면 None (C4)."""
     assert classify_by_size(35.0) is None
+
+
+def test_estimate_px_per_mm_from_10won():
+    """사진 속 10원 지름(18mm)으로 px/mm를 구한다. 촬영 높이가 달라도 맞아야 한다."""
+    for scale in (3.0, 5.0):
+        r10 = round(COIN_DIAMETER_MM[10] / 2 * scale)
+        r500 = round(COIN_DIAMETER_MM[500] / 2 * scale)
+        img = make_image([(100, 150, r10, COPPER_BGR), (300, 150, r500, SILVER_BGR)])
+        circles = [(100, 150, r10), (300, 150, r500)]
+        assert estimate_px_per_mm(img, circles) == pytest.approx(scale, rel=0.05)
+        assert classify_all(img, circles) == [10, 500]
+
+
+def test_estimate_px_per_mm_without_10won_uses_default():
+    img = make_image([(200, 200, 50, SILVER_BGR)])
+    assert estimate_px_per_mm(img, [(200, 200, 50)], default=7.0) == 7.0
+
+
+def test_large_copper_coin_is_not_10():
+    """구리색이어도 10원보다 훨씬 크면 크기로 분류한다."""
+    r = round(COIN_DIAMETER_MM[500] / 2 * PX_PER_MM)
+    img = make_image([(200, 200, r, COPPER_BGR)])
+    assert classify_coin(img, (200, 200, r), PX_PER_MM) == 500
