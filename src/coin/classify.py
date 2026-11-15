@@ -27,7 +27,7 @@ PX_PER_MM: float = 21.0
 # 실제 사진에서 은색 동전도 H 19~26으로 나와서 상한을 25 → 18로 낮췄다.
 # 채도는 사진마다 달라(10원 S 84~176) 75로 둔다.
 COPPER_HUE_RANGES: tuple[tuple[int, int], ...] = ((0, 18), (170, 179))
-COPPER_MIN_SATURATION: float = 100.0
+COPPER_MIN_SATURATION: float = 75.0
 # 동전 픽셀 중 구리색 픽셀이 이 비율 이상이면 10원.
 COPPER_MIN_RATIO: float = 0.5
 # 가장 가까운 동전 지름과 이만큼(mm) 넘게 다르면 '모르겠음'(None).
