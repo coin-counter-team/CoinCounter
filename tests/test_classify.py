@@ -132,9 +132,25 @@ def test_estimate_px_per_mm_from_10won():
         assert classify_all(img, circles) == [10, 500]
 
 
-def test_estimate_px_per_mm_without_10won_uses_default():
-    img = make_image([(200, 200, 50, SILVER_BGR)])
-    assert estimate_px_per_mm(img, [(200, 200, 50)], default=7.0) == 7.0
+def test_estimate_px_per_mm_without_10won_fits_silver_coins():
+    """10원이 없어도 은색 동전들의 크기 비율로 px/mm를 맞춘다."""
+    coins = [(100, 150, r_px(50)), (250, 150, r_px(100)), (420, 150, r_px(500))]
+    img = make_image([(x, y, r, SILVER_BGR) for x, y, r in coins])
+    scale = estimate_px_per_mm(img, coins, default=4.4)
+    assert scale == pytest.approx(PX_PER_MM, rel=0.03)
+    assert [classify_coin(img, c, scale) for c in coins] == [50, 100, 500]
+
+
+def test_estimate_px_per_mm_same_size_coins_uses_default():
+    """10원이 없고 크기가 모두 비슷하면(같은 종류만) 비율로 정할 수 없어 기본값을 쓴다."""
+    coins = [(100, 150, r_px(100)), (300, 150, r_px(100))]
+    img = make_image([(x, y, r, SILVER_BGR) for x, y, r in coins])
+    assert estimate_px_per_mm(img, coins, default=7.0) == 7.0
+
+
+def test_estimate_px_per_mm_no_coins_uses_default():
+    img = make_image([])
+    assert estimate_px_per_mm(img, [], default=7.0) == 7.0
 
 
 def test_large_copper_coin_is_not_10():
