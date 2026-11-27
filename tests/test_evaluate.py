@@ -212,6 +212,30 @@ def test_counts_extra_circles_do_not_raise_detection_above_one(tmp_path):
     assert row["total_match_rate"] == "0.000"
 
 
+def test_counts_detection_count_metrics_perfect(tmp_path):
+    counts, meta = make_count_files(tmp_path)
+    for row in counts_eval.evaluate(counts, meta, PERFECT_PREDS):
+        assert row["detect_count_match"] == "1.000"
+        assert row["pred_per_gt"] == "1.000"
+
+
+def test_counts_over_detection_is_visible(tmp_path):
+    counts, meta = make_count_files(tmp_path)
+    preds = dict(PERFECT_PREDS, **{"x_003.jpg": [50] * 10})  # 정답 1개인데 10개 검출
+    row = by_key(counts_eval.evaluate(counts, meta, preds))[("test", "single")]
+    assert row["detect_approx"] == "1.000"  # 기존 지표는 과다 검출을 못 잡는다
+    assert row["detect_count_match"] == "0.000"
+    assert row["pred_per_gt"] == "10.000"
+
+
+def test_counts_under_detection_is_visible(tmp_path):
+    counts, meta = make_count_files(tmp_path)
+    preds = dict(PERFECT_PREDS, **{"x_002.jpg": [500]})  # 정답 2개인데 1개 검출
+    row = by_key(counts_eval.evaluate(counts, meta, preds))[("tune", "same")]
+    assert row["detect_count_match"] == "0.000"
+    assert row["pred_per_gt"] == "0.500"
+
+
 def test_counts_write_summary(tmp_path):
     counts, meta = make_count_files(tmp_path)
     rows = counts_eval.evaluate(counts, meta, PERFECT_PREDS)

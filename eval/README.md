@@ -15,6 +15,8 @@
 | `evaluate.py` | 동전 한 개당 한 줄(`x, y, r, value`) | 위 정의 그대로 계산 |
 | `evaluate_counts.py` | 사진 한 장당 한 줄(종류별 개수, 총액) | 위치 정답이 없는 동안 사용 |
 
+`evaluate_counts.py`는 검출 방식을 비교할 때 쓰도록 `detect_count_match`(예측 동전 수가 정답과 같은 사진의 비율)와 `pred_per_gt`(예측 수 ÷ 정답 수)도 출력한다. `detect_approx`는 엉뚱한 원이 많아도 1에 가까울 수 있어서, 과다 검출(예: Hough 기본값) 여부는 이 두 값으로 본다.
+
 `evaluate_counts.py`의 총금액 일치율과 개수 완전일치율은 정확한 값이다. 검출률과 분류 정확도는 위치를 모르므로 개수만 비교한 **근사치**이며, 엉뚱한 곳을 잡은 원은 반영하지 못한다. 보고서에는 근사치임을 밝힌다.
 
 예측 CSV는 `make_preds.py`로 만든다. `--labels`에는 `image`, `split` 열이 있는 CSV(예: `image_manifest.csv`)를 넘긴다.

@@ -15,6 +15,11 @@
   count_exact_rate    종류별 개수가 모두 정답과 같은 이미지의 비율
   detect_approx       Σmin(예측 동전 수, 정답 동전 수) / Σ정답 동전 수
   classify_approx     Σ종류별 min(예측, 정답) / Σmin(예측 동전 수, 정답 동전 수)
+  detect_count_match  예측 동전 수가 정답 동전 수와 같은 이미지의 비율
+  pred_per_gt         Σ예측 동전 수 / Σ정답 동전 수 (1보다 크면 과다 검출, 작으면 누락)
+
+detect_approx는 예측이 정답보다 많아도 1.000이 될 수 있어 과다 검출을 드러내지 못한다.
+검출 방식을 비교할 때는 detect_count_match와 pred_per_gt를 함께 본다.
 
 실행:
     python eval/evaluate_counts.py --labels data/labels/coins.csv \
@@ -86,6 +91,8 @@ def evaluate(counts, meta, preds, splits=None):
             a["images"] += 1
             a["gt_coins"] += n_gt
             a["found"] += min(n_pred, n_gt)
+            a["pred_coins"] += n_pred
+            a["count_match"] += int(n_pred == n_gt)
             a["typed"] += overlap
             a["total_ok"] += int(sum(known) == sum(v * n for v, n in gt.items()))
             a["count_ok"] += int(all(pred[v] == gt[v] for v in VALUES))
@@ -103,6 +110,8 @@ def evaluate(counts, meta, preds, splits=None):
                 "images": int(a["images"]),
                 "gt_coins": int(a["gt_coins"]),
                 "detect_approx": f"{_rate(a['found'], a['gt_coins']):.3f}",
+                "detect_count_match": f"{_rate(a['count_match'], a['images']):.3f}",
+                "pred_per_gt": f"{_rate(a['pred_coins'], a['gt_coins']):.3f}",
                 "classify_approx": f"{_rate(a['typed'], a['found']):.3f}",
                 "total_match_rate": f"{_rate(a['total_ok'], a['images']):.3f}",
                 "count_exact_rate": f"{_rate(a['count_ok'], a['images']):.3f}",
@@ -141,7 +150,8 @@ def main() -> None:
     for r in rows:
         print(
             f"[{r['split']}/{r['layout']}] 이미지 {r['images']}장 | "
-            f"검출(근사) {r['detect_approx']} | 분류(근사) {r['classify_approx']} | "
+            f"검출(근사) {r['detect_approx']} | 개수일치(검출) {r['detect_count_match']} | "
+            f"예측/정답 {r['pred_per_gt']} | 분류(근사) {r['classify_approx']} | "
             f"총금액 {r['total_match_rate']} | 개수 완전일치 {r['count_exact_rate']}"
         )
     write_summary(rows, args.out)
