@@ -35,11 +35,25 @@ single_001.jpg,1,0,0,0,1,10
 완전일치율을 계산할 수 있습니다. 동전별 위치 정답이 없으므로 검출률·분류 정확도는
 개수 기반 근사치이며, 검출 개수가 같아도 실제 동전 위치를 정확히 찾았다고 보장하지 않습니다.
 
-`split`과 배치 유형은 정답 CSV에 포함되어 있지 않습니다. 평가 스크립트를 사용할 때는
-`image`, `split`, `layout` 열이 있는 별도 매니페스트를 `--manifest`로 전달해야 합니다.
-현재 저장소에는 매니페스트가 포함되어 있지 않습니다. `eval/make_preds.py`도
-`image`, `split` 열이 필요하므로, 현재 `coins.csv`를 그대로 `--labels`에 전달할 수 없습니다.
+`split`과 배치 유형은 정답 CSV에 포함되어 있지 않고, `data/image_manifest.csv`에 있습니다.
+평가 스크립트를 사용할 때는 이 파일을 `--manifest`로 전달합니다.
+`eval/make_preds.py`도 `image`, `split` 열이 필요하므로, `coins.csv`가 아니라
+`data/image_manifest.csv`를 `--labels`에 전달합니다.
 자세한 사용법은 [평가 가이드](../eval/README.md)를 참고합니다.
+
+## 사진 목록 (`data/image_manifest.csv`)
+
+사진 한 장당 한 줄이며, 기본 조건 사진 100장의 분할과 배치 정보를 기록합니다.
+
+| 열 | 설명 | 예시 |
+| --- | --- | --- |
+| `image` | 원본 사진 파일 이름 (`coins.csv`의 `파일`과 같음) | `single_001.jpg` |
+| `photographer` | 촬영자 | `휘` |
+| `layout` | 배치 유형 (`single`, `same`, `mixed_large`, `mixed_small`) | `single` |
+| `split` | `tune`(규칙 조정용 60장) 또는 `test`(최종 평가용 40장) | `tune` |
+| `original_image` | 촬영 당시 원본 파일 이름 | `hwi_001.jpg` |
+
+`test` 사진은 최종 평가에서만 사용하며, 규칙이나 기준값을 조정할 때 보지 않습니다.
 
 ## 동전별 위치 정답 형식 (추후 수집)
 
