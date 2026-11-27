@@ -87,7 +87,12 @@ def filter_candidates(
         if circularity < min_circularity:
             continue
 
-        (x, y), radius = cv2.minEnclosingCircle(contour)
+        # 반지름은 면적과 같은 원의 반지름으로 구한다. minEnclosingCircle은
+        # 마스크 테두리의 작은 돌기까지 감싸서 실제보다 크게 나온다.
+        moments = cv2.moments(contour)
+        x = moments["m10"] / moments["m00"]
+        y = moments["m01"] / moments["m00"]
+        radius = np.sqrt(area / np.pi)
         if radius < 1:
             continue
 

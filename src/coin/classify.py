@@ -18,8 +18,8 @@ from coin.features import crop_coin, hue_histogram, radius_mm
 # 한국은행 공시 동전 지름(mm). 10원은 2006년 이후 신형(구리 도금 알루미늄).
 COIN_DIAMETER_MM: dict[int, float] = {10: 18.0, 50: 21.6, 100: 24.0, 500: 26.5}
 
-# 1mm가 몇 픽셀인지. 사진마다 촬영 높이가 달라 estimate_px_per_mm()로 사진별로 구하고,
-# 사진에 10원이 없을 때만 이 값을 쓴다. 단일 동전 사진에서 잰 시작값(약 21)이다.
+# 1mm가 몇 픽셀인지. 사진마다 촬영 높이가 달라 estimate_px_per_mm()로 사진별로 구한다.
+# 이 값은 10원이 없는 사진에서 찾을 범위의 기준이다(단일 동전 사진에서 잰 값, 약 21).
 PX_PER_MM: float = 21.0
 
 # 구리색(10원) 판정 기준. OpenCV HSV에서 H는 0~179(빨강 0·179, 주황 ~10~20, 노랑 ~30).
@@ -34,6 +34,11 @@ COPPER_MIN_RATIO: float = 0.5
 MAX_SIZE_DIFF_MM: float = 1.5
 # 구리색이어도 이보다 크면 10원이 아니다(10원 18mm와 50원 21.6mm의 중간).
 COPPER_MAX_DIAMETER_MM: float = (COIN_DIAMETER_MM[10] + COIN_DIAMETER_MM[50]) / 2
+# estimate_px_per_mm()가 px/mm 후보를 몇 개로 나눠 시험할지.
+SCALE_SEARCH_STEPS: int = 301
+# 가장 큰 동전이 가장 작은 동전의 이 배수보다 작으면 "모두 같은 크기"로 본다.
+# 이웃한 동전 지름 차이(50원→100원 11%, 100원→500원 10%)보다 작게 잡는다.
+SAME_SIZE_RATIO: float = 1.08
 
 
 def copper_ratio(coin_bgr: np.ndarray) -> float:
@@ -55,19 +60,47 @@ def classify_by_size(diameter_mm: float, candidates=(50, 100, 500)) -> int | Non
     return best
 
 
+def _scale_error(diameters: list[float], copper: list[bool], px_per_mm: float) -> float:
+    """주어진 px/mm에서 각 동전 지름이 가장 가까운 실제 지름과 얼마나 다른지(상대오차 제곱합)."""
+    error = 0.0
+    for diameter_px, is_cu in zip(diameters, copper, strict=True):
+        mm = diameter_px / px_per_mm
+        if is_cu and mm < COPPER_MAX_DIAMETER_MM:
+            sizes = (COIN_DIAMETER_MM[10],)
+        else:
+            sizes = (COIN_DIAMETER_MM[50], COIN_DIAMETER_MM[100], COIN_DIAMETER_MM[500])
+        error += min(((mm - size) / size) ** 2 for size in sizes)
+    return error
+
+
 def estimate_px_per_mm(
     image: np.ndarray, circles: list[Circle], default: float = PX_PER_MM
 ) -> float:
-    """사진 속 10원(구리색) 동전의 지름으로 이 사진의 px/mm를 구한다.
+    """사진 속 동전 전체의 지름이 실제 지름에 가장 잘 맞는 px/mm를 찾는다.
 
-    10원 지름(18mm)을 자처럼 쓴다. 10원이 없으면 default를 쓴다.
-    구리색으로 잘못 잡힌 큰 동전을 빼려고 가장 작은 구리색 동전의 1.1배 이하만 쓴다.
+    1. 10원(구리색)이 있으면 그 지름(18mm)으로 대략적인 값을 구하고, 그 ±10% 안에서 찾는다.
+       (구리색으로 잘못 잡힌 큰 동전을 빼려고 가장 작은 구리색 동전의 1.1배 이하만 쓴다.)
+    2. 10원이 없으면 default의 0.65~1.15배 안에서 찾는다.
+       단, 동전 크기가 모두 비슷하면 비율 정보가 없으므로 default를 그대로 쓴다.
+    범위를 SCALE_SEARCH_STEPS개로 나눠 오차(_scale_error)가 가장 작은 값을 고른다.
     """
-    diameters = sorted(2 * c[2] for c in circles if is_copper(crop_coin(image, c)))
-    if not diameters:
+    if not circles:
         return default
-    reference = [d for d in diameters if d <= diameters[0] * 1.1]
-    return float(np.median(reference)) / COIN_DIAMETER_MM[10]
+    diameters = [2.0 * c[2] for c in circles]
+    copper = [is_copper(crop_coin(image, c)) for c in circles]
+    copper_diameters = sorted(d for d, is_cu in zip(diameters, copper, strict=True) if is_cu)
+    if copper_diameters:
+        reference = [d for d in copper_diameters if d <= copper_diameters[0] * 1.1]
+        center = float(np.median(reference)) / COIN_DIAMETER_MM[10]
+        low, high = center * 0.9, center * 1.1
+    elif max(diameters) < min(diameters) * SAME_SIZE_RATIO:
+        # 10원이 없고 동전 크기가 모두 비슷하면(단일 동전, 같은 종류만 있는 사진)
+        # 크기 비율로는 배율을 정할 수 없으므로 default를 그대로 쓴다.
+        return default
+    else:
+        low, high = default * 0.65, default * 1.15
+    candidates = np.linspace(low, high, SCALE_SEARCH_STEPS)
+    return float(min(candidates, key=lambda s: _scale_error(diameters, copper, s)))
 
 
 def classify_coin(image: np.ndarray, circle: Circle, px_per_mm: float = PX_PER_MM) -> int | None:
