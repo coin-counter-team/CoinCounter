@@ -39,8 +39,10 @@ Hough는 긴 변 1,200픽셀, dp=1.2, min_dist=90, param1=150, param2=50,
 min_radius=45, max_radius=110, blur_size=5다. 좌표·반지름은 원본 크기로 환산했다.
 원본 해상도 전처리와 축소 회색조 처리를 비교하므로 실행 흐름 전체의 비교로 해석한다.
 
-직접 실행 근거는 로컬 eval/results/issue5-tune60의 summary.csv, image_counts.csv,
-circles.csv, provenance.json 및 비교 이미지에 저장했다. 원본 사진은 data/raw 아래에 보관한다.
+공유 가능한 실행 근거는 [배치별 수치표](results/detection-comparison-20261128/summary.csv),
+[사진별 개수](results/detection-comparison-20261128/image_counts.csv),
+[실행 조건](results/detection-comparison-20261128/provenance.json)에 저장했다.
+로컬 eval/results/issue5-tune60에는 원 좌표와 비교 이미지도 있다. 원본 사진은 data/raw 아래에 보관한다.
 Python 3.11 / OpenCV 5.0.0 환경이다. 60장은 조정용 데이터이며 최종 테스트 성능은 아니다.
 
 ## 기본 설정에 대한 팀원의 선행 측정
