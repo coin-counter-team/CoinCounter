@@ -1,7 +1,7 @@
 # Contour와 Hough 검출 비교
 
 담당: 오현우. 이슈 [#5](https://github.com/coin-counter-team/CoinCounter/issues/5).
-2026년 11월 28일 기준이며 Hybrid는 최종 적용 대상에서 제외한다.
+2026년 11월 28일 기준이다.
 
 ## 조정용 60장 직접 비교 결과
 
@@ -68,7 +68,6 @@ PR #27에서는 원본 해상도에서 사진당 평균 약 2,900개가 검출�
 
 Contour의 adaptive 전처리에는 Hough 기반 원형 테두리 검출·마스크 복원이 포함된다.
 따라서 Hough의 도움을 전혀 받지 않는 순수 Contour 단독 결과라고 설명하지 않는다.
-이 전처리는 별도 실험인 Hough 후보 주변 Contour 보정과는 다른 처리다.
 
 ## 사진 확보 전의 로컬 13장 예비 결과
 
