@@ -1,0 +1,132 @@
+{
+  "commit": "7c203f2a824da1d847c2e1261703fd0941bb0a90",
+  "manifest_tune": 60,
+  "processed": 60,
+  "missing": [],
+  "scope": "official tune 60; 13 hw tune images were used in earlier exploratory work; no test execution",
+  "contour": "original image, adaptive preprocessing including Hough rim recovery, default filters",
+  "hough": "long side 1200; dp1.2,min_dist90,min_radius45,max_radius110,param1=150,param2=50",
+  "opencv": "5.0.0",
+  "summary": [
+    {
+      "method": "contour_adaptive",
+      "layout": "all",
+      "images": 60,
+      "gt_coins": 437,
+      "pred_coins": 437,
+      "matched_images": 58,
+      "count_match_rate": 0.9666666666666667,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 1,
+      "count_excess": 1
+    },
+    {
+      "method": "contour_adaptive",
+      "layout": "mixed_large",
+      "images": 28,
+      "gt_coins": 308,
+      "pred_coins": 307,
+      "matched_images": 27,
+      "count_match_rate": 0.9642857142857143,
+      "pred_per_gt": 0.9967532467532467,
+      "count_shortfall": 1,
+      "count_excess": 0
+    },
+    {
+      "method": "contour_adaptive",
+      "layout": "mixed_small",
+      "images": 22,
+      "gt_coins": 102,
+      "pred_coins": 103,
+      "matched_images": 21,
+      "count_match_rate": 0.9545454545454546,
+      "pred_per_gt": 1.0098039215686274,
+      "count_shortfall": 0,
+      "count_excess": 1
+    },
+    {
+      "method": "contour_adaptive",
+      "layout": "same",
+      "images": 6,
+      "gt_coins": 23,
+      "pred_coins": 23,
+      "matched_images": 6,
+      "count_match_rate": 1.0,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 0,
+      "count_excess": 0
+    },
+    {
+      "method": "contour_adaptive",
+      "layout": "single",
+      "images": 4,
+      "gt_coins": 4,
+      "pred_coins": 4,
+      "matched_images": 4,
+      "count_match_rate": 1.0,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 0,
+      "count_excess": 0
+    },
+    {
+      "method": "hough_adjusted",
+      "layout": "all",
+      "images": 60,
+      "gt_coins": 437,
+      "pred_coins": 411,
+      "matched_images": 45,
+      "count_match_rate": 0.75,
+      "pred_per_gt": 0.9405034324942791,
+      "count_shortfall": 26,
+      "count_excess": 0
+    },
+    {
+      "method": "hough_adjusted",
+      "layout": "mixed_large",
+      "images": 28,
+      "gt_coins": 308,
+      "pred_coins": 308,
+      "matched_images": 28,
+      "count_match_rate": 1.0,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 0,
+      "count_excess": 0
+    },
+    {
+      "method": "hough_adjusted",
+      "layout": "mixed_small",
+      "images": 22,
+      "gt_coins": 102,
+      "pred_coins": 76,
+      "matched_images": 7,
+      "count_match_rate": 0.3181818181818182,
+      "pred_per_gt": 0.7450980392156863,
+      "count_shortfall": 26,
+      "count_excess": 0
+    },
+    {
+      "method": "hough_adjusted",
+      "layout": "same",
+      "images": 6,
+      "gt_coins": 23,
+      "pred_coins": 23,
+      "matched_images": 6,
+      "count_match_rate": 1.0,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 0,
+      "count_excess": 0
+    },
+    {
+      "method": "hough_adjusted",
+      "layout": "single",
+      "images": 4,
+      "gt_coins": 4,
+      "pred_coins": 4,
+      "matched_images": 4,
+      "count_match_rate": 1.0,
+      "pred_per_gt": 1.0,
+      "count_shortfall": 0,
+      "count_excess": 0
+    }
+  ]
+}
